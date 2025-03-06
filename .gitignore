@@ -1,0 +1,41 @@
+# Byte-compiled / cached files
+__pycache__/
+*.py[cod]
+*.so
+*.dylib
+.DS_Store
+
+# Virtual environment
+venv/
+env/
+*.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs & Debugging
+logs/
+*.log
+*.out
+*.err
+
+# Data files
+*.pth
+*.h5
+*.zip
+*.tar.gz
+*.npy
+*.npz
+data/
+checkpoints/
+
+# PyTorch Lightning logs
+lightning_logs/
+wandb/
+
+# VS Code settings
+.vscode/
+
+
+#data set
+supertux_data.zip
