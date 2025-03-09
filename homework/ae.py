@@ -120,20 +120,17 @@ class PatchAutoEncoder(torch.nn.Module, PatchAutoEncoderBase):
             super().__init__()
             #raise NotImplementedError()
             
-            #self.patch_size = patch_size
-            #self.conv1 = nn.Conv2d(3, latent_dim, kernel_size=3, stride=4, padding=1)  # Stride=4 downsamples
-            #self.conv2 = nn.Conv2d(latent_dim, bottleneck, kernel_size=3, stride=1, padding=1)
-            #self.activation = nn.GELU()
-
             self.patchify = PatchifyLinear(patch_size, latent_dim)  # Teacher-provided function
-            self.bottleneck = nn.Linear(latent_dim, bottleneck)  # Compress latent representation
+            #self.bottleneck = nn.Linear(latent_dim, bottleneck)  # Compress latent representation
+            self.bottleneck = nn.Sequential(
+                nn.Linear(latent_dim, bottleneck * 2),
+                nn.GELU(),
+                nn.Linear(bottleneck * 2, bottleneck)
+                )
             self.activation = nn.GELU()
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             #raise NotImplementedError()
-            
-            #x = self.activation(self.conv1(x))
-            #x = self.activation(self.conv2(x))
             
             x = self.patchify(x)  # Convert image into patches
             x = self.activation(self.bottleneck(x))  # Compress patches into bottleneck
@@ -146,28 +143,24 @@ class PatchAutoEncoder(torch.nn.Module, PatchAutoEncoderBase):
             super().__init__()
             #raise NotImplementedError()
             
-            #self.patch_size = patch_size
-            #self.deconv1 = nn.ConvTranspose2d(bottleneck, latent_dim, kernel_size=3, stride=4, padding=1, output_padding=(3, 1)) # Stride=4 upsamples
-            #self.deconv2 = nn.ConvTranspose2d(latent_dim, 3, kernel_size=3, stride=1, padding=1)
-            #self.activation = nn.GELU()
-
-            self.unbottleneck = nn.Linear(bottleneck, latent_dim)  # Expand from bottleneck
+            #self.unbottleneck = nn.Linear(bottleneck, latent_dim)  # Expand from bottleneck
+            self.unbottleneck = nn.Sequential(
+                nn.Linear(bottleneck, bottleneck * 2),  # Expand back up first
+                nn.GELU(),
+                nn.Linear(bottleneck * 2, latent_dim)  # Restore original latent dimension
+            )
             self.unpatchify = UnpatchifyLinear(patch_size, latent_dim)  # Teacher-provided function
             self.activation = nn.GELU() 
 
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             #raise NotImplementedError()
-            
-            #x = self.activation(self.deconv1(x))
-            #x = torch.tanh(self.deconv2(x))  # Ensure output is in range [-1,1]
-            #return x
-            x = self.activation(self.unbottleneck(x))  # Expand latent space
+
+            #x = self.activation(self.unbottleneck(x))  # Expand latent space
+            x = self.unbottleneck(x)  # Expand latent space
             x = self.unpatchify(x)  # Convert patches back to an image
             return torch.tanh(x) 
             
-        
-
     def __init__(self, patch_size: int = 25, latent_dim: int = 128, bottleneck: int = 128):
         super().__init__()
         #raise NotImplementedError()
@@ -181,27 +174,17 @@ class PatchAutoEncoder(torch.nn.Module, PatchAutoEncoderBase):
         You can return an empty dictionary if you don't have any additional terms.
         """
         #raise NotImplementedError()
-        #encoded = self.encode(x)
-        #reconstructed = self.decode(encoded)
-        #loss_terms = {}  # Optionally return additional loss terms for visualization.
-        #return reconstructed, loss_terms
-    
-
         skip = x  # Store input before encoding
         encoded = self.encode(x)
         decoded = self.decode(encoded)
-        return decoded + skip * .2, {}
+        return decoded + skip * .15, {}
     
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         #raise NotImplementedError()
-        #x = hwc_to_chw(x)  # Convert to (C, H, W)
         encoded = self.encoder(x)
-        #return chw_to_hwc(encoded)
         return encoded
 
     def decode(self, x: torch.Tensor) -> torch.Tensor:
         #raise NotImplementedError()
-        #x = hwc_to_chw(x)
         decoded = self.decoder(x)
-        #return chw_to_hwc(decoded)
         return decoded

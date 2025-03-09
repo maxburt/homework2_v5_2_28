@@ -13,6 +13,13 @@ class PatchAutoEncoderGrader(Grader):
     """Patch AutoEncoder"""
 
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+    if device == "cuda":
+        print("Using CUDA")
+    elif device == "mps":
+        print("Using MPS")
+    else:
+        print("Using CPU")
+        
     #device = "cpu"
     VALIDATION_LOSS_BOUND = 0.01, 0.015
     BOTTLENECK_DIM_BOUND = 256

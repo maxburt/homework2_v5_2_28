@@ -55,18 +55,14 @@ class BSQ(torch.nn.Module):
 
         # Added a pre-bsq MLP to retain more information before binarization
         self.pre_bsq = nn.Sequential(
-            nn.Linear(embedding_dim, embedding_dim),
+            nn.Linear(embedding_dim, embedding_dim * 2),
             nn.GELU(),
-            nn.Linear(embedding_dim, embedding_dim),
+            nn.Linear(embedding_dim * 2, embedding_dim),
             nn.GELU(),
-            nn.Linear(embedding_dim, embedding_dim),
-            nn.GELU(),
-    
         )
-
+     
         self.proj_down = nn.Linear(embedding_dim, codebook_bits)  # Down-project to codebook size
         self.proj_up = nn.Linear(codebook_bits, embedding_dim)  # Up-project back to embedding size
-
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -82,15 +78,16 @@ class BSQ(torch.nn.Module):
         x = diff_sign(x)  # Apply differentiable sign function
         return x
 
-
     def decode(self, x: torch.Tensor) -> torch.Tensor:
         """
         Implement the BSQ decoder:
         - A linear up-projection into embedding_dim should suffice
         """
         #raise NotImplementedError()
-        return self.proj_up(x) # Up-project to `embedding_dim`
-
+        #return self.proj_up(x) # Up-project to `embedding_dim`
+        x = self.proj_up(x)  # Up-project to `embedding_dim`
+        x = F.gelu(x)  # Add stability
+        return x
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.decode(self.encode(x))

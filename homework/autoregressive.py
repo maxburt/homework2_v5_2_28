@@ -14,7 +14,6 @@ def load() -> torch.nn.Module:
     print(f"Loading {model_name} from {model_path}")
     return torch.load(model_path, weights_only=False)
 
-
 class Autoregressive(abc.ABC):
     """
     Base class for all autoregressive models.
@@ -56,7 +55,7 @@ class AutoregressiveModel(Autoregressive, torch.nn.Module):
     Hint: You can complete this homework without using positional embeddings
     """
 
-    def __init__(self, d_latent: int = 128, n_tokens: int = 2**10, n_heads: int = 8, n_layers: int = 6):
+    def __init__(self, d_latent: int = 64, n_tokens: int = 2**10, n_heads: int = 4, n_layers: int = 4):
         super().__init__()
         #raise NotImplementedError()
 
@@ -82,19 +81,24 @@ class AutoregressiveModel(Autoregressive, torch.nn.Module):
         B, H, W = x.shape  # (Batch, Height, Width)
 
         # Flatten spatial dimensions into a sequence
-        x = x.view(B, H * W)  # Shape: (B, H*W)
+        x = x.view(B, H * W).contiguous()  # Shape: (B, H*W)
 
-        # Shift input sequence right (prepend start token, remove last token)
-        shifted_x = torch.cat(
-            [torch.full((B, 1), self.n_tokens - 1, dtype=torch.long, device=x.device), x[:, :-1]], dim=1
-        )
+        shifted_x = torch.full((B, 1), self.n_tokens - 1, dtype=torch.long, device=x.device)
+        shifted_x = torch.cat([shifted_x, x[:, :-1]], dim=1)  # Shift input by 1
+
 
         # Embed tokens
         x = self.embedding(shifted_x)  # Shape: (B, H*W, d_latent)
 
         # Create causal mask (Ensure no token sees future tokens)
         seq_len = x.shape[1]
-        mask = torch.triu(torch.full((seq_len, seq_len), float('-inf'), device=x.device), diagonal=1)
+        
+        if seq_len > 0:
+            mask = nn.Transformer.generate_square_subsequent_mask(seq_len).to(x.device)
+        else:
+            mask = None  # No need for masking if sequence length is zero
+            
+        #mask = torch.triu(torch.full((seq_len, seq_len), float('-inf'), device=x.device), diagonal=1)
 
         # Pass through transformer
         x = self.transformer(x, mask=mask)
@@ -120,6 +124,7 @@ class AutoregressiveModel(Autoregressive, torch.nn.Module):
                     [torch.full((B, 1), self.n_tokens - 1, dtype=torch.long, device=device), flattened_output[:, :-1]],
                     dim=1,
                 )
+                
 
                 # Embed tokens
                 embedded = self.embedding(shifted_input)
@@ -133,7 +138,9 @@ class AutoregressiveModel(Autoregressive, torch.nn.Module):
 
                 # Predict token at (i, j)
                 logits = self.output_layer(transformer_output)
-                probs = F.softmax(logits[:, -1, :], dim=-1)  # Get last token prediction
+                temperature = 0.7  # Adjustable parameter
+                probs = F.softmax(logits[:, -1, :] / temperature, dim=-1)
+
 
                 # Sample from probability distribution
                 sampled_token = torch.multinomial(probs, 1).squeeze(-1)
